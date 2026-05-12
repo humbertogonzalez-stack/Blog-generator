@@ -1,0 +1,71 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	// SEO Generator Worker — genera artículos con Claude y los inyecta a Linear
+	// El pipeline Linear → Queue → Consumer → Emdash ya existe (Santi lo hizo).
+	// Este worker es el upstream: genera contenido y crea el issue.
+	"name": "clivi-seo-generator",
+	"main": "./src/index.ts",
+	"compatibility_date": "2026-04-01",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"workers_dev": true,
+	"kv_namespaces": [
+		// Para batch cron: almacena "pending-keywords" y reportes de ejecución
+		{
+			"binding": "KEYWORDS_KV",
+			"id": "TODO_KV_NAMESPACE_ID_STAGING"
+		}
+	],
+	// Cron: lunes 6am UTC — ajustar según necesidades del equipo
+	"triggers": {
+		"crons": [
+			"0 6 * * 1"
+		]
+	},
+	"env": {
+		"staging": {
+			"name": "clivi-seo-generator-staging",
+			"vars": {
+				"BLOG_ENV": "staging"
+			},
+			"kv_namespaces": [
+				{
+					"binding": "KEYWORDS_KV",
+					"id": "TODO_KV_NAMESPACE_ID_STAGING"
+				},
+				{
+					"binding": "KEYWORDS_KV",
+					"id": "2e6cee17ffad4d03b3aed30cf8fda716"
+				}
+			]
+		},
+		"production": {
+			"name": "clivi-seo-generator-prod",
+			"vars": {
+				"BLOG_ENV": "production"
+			},
+			"kv_namespaces": [
+				{
+					"binding": "KEYWORDS_KV",
+					"id": "TODO_KV_NAMESPACE_ID_PROD"
+				}
+			]
+		}
+	}
+	/*
+	 * SECRETS — configurar con:
+	 *   wrangler secret put ANTHROPIC_API_KEY --env staging
+	 *   wrangler secret put LINEAR_API_KEY --env staging
+	 *   wrangler secret put LINEAR_TEAM_ID --env staging
+	 *   wrangler secret put LINEAR_TRIGGER_SECRET --env staging
+	 *
+	 * Para LINEAR_TEAM_ID: ir a Linear → Settings → Teams → copiar el Team ID
+	 * Para LINEAR_TRIGGER_SECRET: generar con `openssl rand -hex 32`
+	 *
+	 * OPTIONAL SECRETS (para asignar labels automáticamente):
+	 *   wrangler secret put LINEAR_LABEL_SEO_ID --env staging
+	 *   wrangler secret put LINEAR_LABEL_REVIEW_ID --env staging
+	 *   (Obtener los ULIDs de los labels vía Linear API o settings)
+	 */
+}
