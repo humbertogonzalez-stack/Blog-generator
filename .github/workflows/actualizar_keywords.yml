@@ -1,0 +1,45 @@
+name: Actualizar Keywords SEO
+
+on:
+  schedule:
+      - cron: '0 5 * * 0'  # Domingo 11pm Mexico (05:00 UTC)
+        workflow_dispatch:      # Permite correrlo manualmente desde GitHub
+
+        jobs:
+          actualizar:
+              runs-on: ubuntu-latest
+
+                  steps:
+                        - name: Checkout repo
+                                uses: actions/checkout@v4
+
+                                      - name: Setup Python
+                                              uses: actions/setup-python@v5
+                                                      with:
+                                                                python-version: '3.11'
+
+                                                                      - name: Instalar dependencias
+                                                                              run: |
+                                                                                        pip install google-auth-oauthlib google-auth-httplib2 google-api-python-client pytrends requests
+
+                                                                                              - name: Restaurar token de GSC
+                                                                                                      run: |
+                                                                                                                echo '${{ secrets.GSC_TOKEN }}' > gsc-token.pickle.b64
+                                                                                                                          base64 -d gsc-token.pickle.b64 > gsc-token.pickle
+                                                                                                                          
+                                                                                                                                - name: Restaurar credenciales OAuth
+                                                                                                                                        run: |
+                                                                                                                                                  echo '${{ secrets.GSC_OAUTH_JSON }}' > gsc-oauth.json
+                                                                                                                                                  
+                                                                                                                                                        - name: Actualizar scores con GSC y Trends
+                                                                                                                                                                run: |
+                                                                                                                                                                          python gsc_connector.py --no-upload
+                                                                                                                                                                          
+                                                                                                                                                                                - name: Subir keywords al KV de Cloudflare
+                                                                                                                                                                                        run: |
+                                                                                                                                                                                                  curl -s -X PUT \
+                                                                                                                                                                                                              "https://api.cloudflare.com/client/v4/accounts/${{ secrets.CF_ACCOUNT_ID }}/storage/kv/namespaces/${{ secrets.CF_KV_ID }}/values/pending-keywords" \
+                                                                                                                                                                                                                          -H "Authorization: Bearer ${{ secrets.CF_API_TOKEN }}" \
+                                                                                                                                                                                                                                      -H "Content-Type: application/json" \
+                                                                                                                                                                                                                                                  --data-binary @trends_batch.json
+                                                                                                                                                                                                                                                            echo "Keywords subidas al KV de Cloudflare"
